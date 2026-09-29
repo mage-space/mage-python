@@ -302,6 +302,40 @@ def test_wait_raises_after_its_timeout_without_cancelling(
     assert server.calls_to("POST", CANCEL) == []
 
 
+def test_wait_does_not_start_a_read_after_the_deadline(
+    mage: Mage, server: Server, clock: Clock
+) -> None:
+    server.add("GET", STATUS, *(json_reply(200, request_body()) for _ in range(10)))
+
+    with pytest.raises(MageTimeoutError):
+        mage.requests.wait(request_body(), poll_interval=2, timeout=3)
+
+    # One read after the first pause; the next pause ends at the deadline.
+    assert len(server.calls_to("GET", STATUS)) == 1
+
+
+def test_wait_cuts_a_status_read_to_the_time_left(mage: Mage, server: Server) -> None:
+    server.add("GET", STATUS, json_reply(200, request_body("completed")))
+
+    mage.requests.wait(REQUEST_ID, timeout=0.25)
+
+    (read,) = server.calls_to("GET", STATUS)
+    assert read.extensions["timeout"]["read"] == pytest.approx(0.25)
+
+
+def test_wait_stops_retrying_a_read_at_the_deadline(
+    mage: Mage, server: Server, clock: Clock
+) -> None:
+    server.add("GET", STATUS, httpx.Response(503))
+
+    with pytest.raises(MageTimeoutError) as caught:
+        mage.requests.wait(REQUEST_ID, timeout=0.3)
+
+    assert caught.value.request is None
+    assert len(server.calls_to("GET", STATUS)) == 1
+    assert sum(clock.sleeps) == pytest.approx(0.3)
+
+
 def test_run_returns_the_completed_request(mage: Mage, server: Server) -> None:
     server.add("POST", GENERATE, json_reply(202, request_body()))
     server.add("GET", STATUS, json_reply(200, request_body("completed")))

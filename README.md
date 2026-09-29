@@ -143,7 +143,7 @@ mage.references.delete(coat["id"])
 | `MageAPIError` | The API answered with an error: `status`, `code` (for example `insufficient_gems`, `invalid_config`), `message`, `request_id`, `body`. |
 | `MageConnectionError` | No response at all (network error or timeout), after retries. |
 | `MageGenerationError` | `run()` ended with a failed or cancelled request: `code` (for example `content_blocked`) and the final `request`. |
-| `MageTimeoutError` | `wait()` or `run()` passed its `timeout`. `request` is the last state seen; the request keeps running. |
+| `MageTimeoutError` | `wait()` or `run()` passed its `timeout`, which also cuts short a status read in progress. `request` is the last state read (None if none was); the request keeps running. |
 
 All four derive from `MageError`.
 

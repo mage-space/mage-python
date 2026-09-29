@@ -131,12 +131,24 @@ def is_final(request: GenerationRequest) -> bool:
     return request["status"] in FINAL_STATUSES
 
 
-def timeout_message(request: GenerationRequest, timeout: float | None) -> str:
+def timeout_message(request_id: str, request: GenerationRequest | None, timeout: float) -> str:
+    state = f"last status: {request['status']}" if request else "no status read yet"
     return (
-        f"Request {request['request_id']} did not finish within {timeout} seconds "
-        f"(last status: {request['status']}). It is still running on Mage; "
-        "wait for it again or cancel it."
+        f"Request {request_id} did not finish within {timeout} seconds ({state}). "
+        "It is still running on Mage; wait for it again or cancel it."
     )
+
+
+def attempt_timeout(timeout: float, deadline: float | None, now: float) -> float:
+    """Seconds one HTTP attempt may take: the client timeout, cut to what is left
+    before a wait's deadline (zero or less once it has passed)."""
+    return timeout if deadline is None else min(timeout, deadline - now)
+
+
+def retry_pause(attempt: int, deadline: float | None, now: float) -> float:
+    """The backoff before a retry, never past a wait's deadline."""
+    delay = retry_delay(attempt)
+    return delay if deadline is None else max(0.0, min(delay, deadline - now))
 
 
 def read_upload(data: UploadData, content_type: str | None) -> tuple[bytes, str]:

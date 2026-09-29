@@ -19,6 +19,7 @@ from ._base import (
     UploadData,
     api_error,
     api_headers,
+    attempt_timeout,
     check_upload_size,
     is_final,
     list_params,
@@ -27,14 +28,20 @@ from ._base import (
     read_upload,
     resolve_api_key,
     resolve_base_url,
-    retry_delay,
+    retry_pause,
     segment,
     should_retry,
     timeout_message,
     upload_error,
     without_none,
 )
-from ._errors import MageAPIError, MageConnectionError, MageGenerationError, MageTimeoutError
+from ._errors import (
+    MageAPIError,
+    MageConnectionError,
+    MageError,
+    MageGenerationError,
+    MageTimeoutError,
+)
 from ._generated import (
     Account,
     ArchitectureId,
@@ -196,6 +203,7 @@ class AsyncMage:
         json: Any = None,
         params: Mapping[str, str | int] | None = None,
         headers: Mapping[str, str] | None = None,
+        deadline: float | None = None,
     ) -> Any:
         request_headers = api_headers(self.api_key, json_body=json is not None)
         request_headers.update(headers or {})
@@ -207,6 +215,7 @@ class AsyncMage:
             headers=request_headers,
             json=json,
             params=params,
+            deadline=deadline,
         )
         if response.status_code == 204 or not response.content:
             return None
@@ -223,9 +232,13 @@ class AsyncMage:
         json: Any = None,
         params: Mapping[str, str | int] | None = None,
         content: bytes | None = None,
+        deadline: float | None = None,
     ) -> httpx.Response:
         attempt = 0
         while True:
+            timeout = attempt_timeout(self.timeout, deadline, _clock())
+            if timeout <= 0:
+                raise MageConnectionError(f"{method} {url} was not sent: the deadline passed.")
             try:
                 response = await self._http.request(
                     method,
@@ -234,7 +247,7 @@ class AsyncMage:
                     json=json,
                     params=params,
                     content=content,
-                    timeout=self.timeout,
+                    timeout=timeout,
                 )
             except httpx.TransportError as exc:
                 if retry is Retry.NEVER or attempt >= self.max_retries:
@@ -245,7 +258,7 @@ class AsyncMage:
                 error = to_error(response)
                 if attempt >= self.max_retries or not should_retry(retry, error):
                     raise error
-            await _sleep(retry_delay(attempt))
+            await _sleep(retry_pause(attempt, deadline, _clock()))
             attempt += 1
 
 
@@ -287,26 +300,37 @@ class AsyncRequests:
         it may be a plain function or a coroutine function.
 
         Raises:
-            MageTimeoutError: `timeout` seconds passed first. The request keeps running.
+            MageTimeoutError: `timeout` seconds passed first, counting status reads in
+                progress. The request keeps running.
         """
         deadline = None if timeout is None else _clock() + timeout
-        if isinstance(request, str):
-            current = await self.get(request)
-            await _notify(on_update, current)
-        else:
-            current = request
+        request_id = request if isinstance(request, str) else request["request_id"]
+        current = None if isinstance(request, str) else request
         delay = poll_interval
-        while not is_final(current):
-            pause = poll_delay(delay)
-            if deadline is not None:
-                remaining = deadline - _clock()
-                if remaining <= 0:
-                    raise MageTimeoutError(timeout_message(current, timeout), request=current)
-                pause = min(pause, remaining)
-            await _sleep(pause)
-            current = await self.get(current["request_id"])
+        while current is None or not is_final(current):
+            if current is not None:
+                pause = poll_delay(delay)
+                if deadline is not None:
+                    pause = max(0.0, min(pause, deadline - _clock()))
+                await _sleep(pause)
+                delay = next_poll_interval(delay, max_poll_interval)
+            try:
+                # The deadline also bounds the read and its retries.
+                current = cast(
+                    GenerationRequest,
+                    await self._client._request(
+                        "GET",
+                        f"/v1/requests/{segment(request_id)}/status",
+                        retry=Retry.SAFE,
+                        deadline=deadline,
+                    ),
+                )
+            except MageError as exc:
+                if timeout is not None and deadline is not None and _clock() >= deadline:
+                    message = timeout_message(request_id, current, timeout)
+                    raise MageTimeoutError(message, request=current) from exc
+                raise
             await _notify(on_update, current)
-            delay = next_poll_interval(delay, max_poll_interval)
         return current
 
 

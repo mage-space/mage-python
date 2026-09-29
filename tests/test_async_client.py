@@ -101,6 +101,19 @@ async def test_wait_times_out(async_mage: AsyncMage, server: Server, clock: Cloc
     assert sum(clock.sleeps) == pytest.approx(3)
 
 
+async def test_wait_stops_retrying_a_read_at_the_deadline(
+    async_mage: AsyncMage, server: Server, clock: Clock
+) -> None:
+    server.add("GET", STATUS, httpx.Response(503))
+
+    with pytest.raises(MageTimeoutError) as caught:
+        await async_mage.requests.wait(REQUEST_ID, timeout=0.3)
+
+    assert caught.value.request is None
+    assert len(server.calls_to("GET", STATUS)) == 1
+    assert sum(clock.sleeps) == pytest.approx(0.3)
+
+
 async def test_run_raises_for_a_failed_request(async_mage: AsyncMage, server: Server) -> None:
     failed = request_body(
         "failed", error={"code": "generation_failed", "message": "The model errored."}

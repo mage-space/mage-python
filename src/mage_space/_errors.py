@@ -60,10 +60,10 @@ class MageConnectionError(MageError):
 class MageTimeoutError(MageError):
     """`wait` or `run` passed its deadline. The request keeps running on Mage."""
 
-    def __init__(self, message: str, *, request: GenerationRequest) -> None:
+    def __init__(self, message: str, *, request: GenerationRequest | None) -> None:
         super().__init__(message)
         self.request = request
-        """The last state seen before the deadline."""
+        """The last state read before the deadline, or None when none was read."""
 
 
 class MageGenerationError(MageError):
