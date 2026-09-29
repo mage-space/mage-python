@@ -2,7 +2,8 @@ name: Sync API spec
 
 # Keeps spec/openapi.json equal to the spec docs.mage.space serves and regenerates the
 # types from it. A change becomes a pull request titled by what it does to clients:
-#   feat!: removes or tightens something (oasdiff reports a breaking change); left for review
+#   feat!: removes or tightens something (any oasdiff breaking error or warning, such as a
+#          removed optional field); left for review
 #   feat:  adds models, fields, or options; merges itself once CI passes
 #   docs:  wording only; merges itself once CI passes
 on:
@@ -69,7 +70,7 @@ jobs:
         run: |
           new="$RUNNER_TEMP/openapi.json"
           # Any failure to compare counts as breaking, so a person looks at it.
-          if oasdiff breaking spec/openapi.json "$new" --fail-on ERR > "$RUNNER_TEMP/breaking.txt"; then
+          if oasdiff breaking spec/openapi.json "$new" --fail-on WARN > "$RUNNER_TEMP/breaking.txt"; then
             breaking=false
             title='feat: sync API spec'
           else
