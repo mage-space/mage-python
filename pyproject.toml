@@ -1,0 +1,74 @@
+[project]
+name = "mage-space"
+dynamic = ["version"]
+description = "The official Python SDK for the Mage API: generate images, video, and audio with Mage models."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mage", email = "mage@mage.space" }]
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.25,<1",
+    "typing-extensions>=4.7",
+]
+keywords = ["mage", "mage.space", "ai", "image generation", "video generation", "audio generation", "sdk", "api"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://www.mage.space"
+Documentation = "https://docs.mage.space/api/overview"
+Repository = "https://github.com/mage-space/mage-python"
+Issues = "https://github.com/mage-space/mage-python/issues"
+Changelog = "https://github.com/mage-space/mage-python/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/mage_space/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mage_space"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "scripts", "spec", "README.md", "LICENSE"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["src/mage_space/_generated.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+files = ["src", "scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "anyio>=4.15.1",
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+]

@@ -1,0 +1,136 @@
+name: Sync API spec
+
+# Keeps spec/openapi.json equal to the spec docs.mage.space serves and regenerates the
+# types from it. A change becomes a pull request titled by what it does to clients:
+#   feat!: removes or tightens something (oasdiff reports a breaking change); left for review
+#   feat:  adds models, fields, or options; merges itself once CI passes
+#   docs:  wording only; merges itself once CI passes
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [api-spec-changed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-spec
+  cancel-in-progress: false
+
+env:
+  SPEC_URL: https://docs.mage.space/api/openapi.json
+  OASDIFF_VERSION: 1.32.1
+
+jobs:
+  sync:
+    name: Sync API spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # A GitHub App token, so CI runs on the pull request and auto-merge can finish it.
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          app-id: ${{ vars.MAGE_BOT_APP_ID }}
+          private-key: ${{ secrets.MAGE_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      - name: Fetch the published spec
+        id: fetch
+        run: |
+          curl --fail --silent --show-error --location "$SPEC_URL" -o "$RUNNER_TEMP/openapi.json"
+          if cmp -s "$RUNNER_TEMP/openapi.json" spec/openapi.json; then
+            echo "spec/openapi.json already matches $SPEC_URL."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install oasdiff
+        if: steps.fetch.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v$OASDIFF_VERSION" --repo oasdiff/oasdiff \
+            --pattern "oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz" --dir "$RUNNER_TEMP"
+          tar -xzf "$RUNNER_TEMP/oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" oasdiff
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Classify the change
+        id: classify
+        if: steps.fetch.outputs.changed == 'true'
+        run: |
+          new="$RUNNER_TEMP/openapi.json"
+          # Any failure to compare counts as breaking, so a person looks at it.
+          if oasdiff breaking spec/openapi.json "$new" --fail-on ERR > "$RUNNER_TEMP/breaking.txt"; then
+            breaking=false
+            title='feat: sync API spec'
+          else
+            breaking=true
+            title='feat!: sync API spec'
+          fi
+          changes=$(oasdiff changelog spec/openapi.json "$new" --format json | jq length)
+          if [ "$breaking" = false ] && [ "$changes" = 0 ]; then
+            title='docs: sync API spec'
+          fi
+          delimiter="EOF_$(openssl rand -hex 8)"
+          {
+            echo "breaking=$breaking"
+            echo "title=$title"
+            echo "body<<$delimiter"
+            echo "Syncs \`spec/openapi.json\` with $SPEC_URL and regenerates the types."
+            echo
+            if [ "$breaking" = true ]; then
+              echo '## Breaking changes'
+              echo
+              echo 'This change can break existing callers, so it waits for review.'
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/breaking.txt"
+              echo '```'
+              echo
+            fi
+            oasdiff changelog spec/openapi.json "$new" --format markdown
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+          cp "$new" spec/openapi.json
+
+      - uses: astral-sh/setup-uv@v10
+        if: steps.fetch.outputs.changed == 'true'
+
+      - name: Regenerate the types
+        if: steps.fetch.outputs.changed == 'true'
+        run: uv run --locked python scripts/generate.py
+
+      - uses: peter-evans/create-pull-request@v8
+        id: pr
+        if: steps.fetch.outputs.changed == 'true'
+        with:
+          token: ${{ steps.app.outputs.token }}
+          branch: bot/sync-spec
+          delete-branch: true
+          add-paths: |
+            spec/openapi.json
+            src/mage_space/_generated.py
+          commit-message: ${{ steps.classify.outputs.title }}
+          title: ${{ steps.classify.outputs.title }}
+          body: ${{ steps.classify.outputs.body }}
+          labels: ${{ steps.classify.outputs.breaking == 'true' && 'needs-review' || '' }}
+
+      - name: Merge when CI passes
+        if: steps.pr.outputs.pull-request-number && steps.classify.outputs.breaking == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: gh pr merge --auto --squash "${{ steps.pr.outputs.pull-request-url }}"
+
+      - name: Hold a breaking change for review
+        if: steps.pr.outputs.pull-request-number && steps.classify.outputs.breaking == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        # An earlier additive version of this PR may have enabled auto-merge.
+        run: gh pr merge --disable-auto "${{ steps.pr.outputs.pull-request-url }}" || true

@@ -1,0 +1,35 @@
+name: Live smoke test
+
+# Runs the SDK against the real API every night. Spends gems: one generation with the
+# cheapest image model. Skips itself when the MAGE_API_KEY secret is not set.
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Live smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MAGE_API_KEY: ${{ secrets.MAGE_API_KEY }}
+    steps:
+      - name: Check for an API key
+        id: key
+        run: |
+          if [ -z "$MAGE_API_KEY" ]; then
+            echo "::notice::MAGE_API_KEY is not set; skipping the live smoke test."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.key.outputs.present == 'true'
+      - uses: astral-sh/setup-uv@v10
+        if: steps.key.outputs.present == 'true'
+      - if: steps.key.outputs.present == 'true'
+        run: uv run --locked python scripts/smoke.py
