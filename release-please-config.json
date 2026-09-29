@@ -9,8 +9,7 @@
       "package-name": "mage-space",
       "extra-files": [
         "src/mage_space/_version.py"
-      ],
-      "initial-version": "0.0.1"
+      ]
     }
   }
 }
