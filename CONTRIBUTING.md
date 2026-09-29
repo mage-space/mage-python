@@ -49,5 +49,5 @@ One-time settings the workflows depend on:
 
 - **GitHub App** installed on this repository with read and write access to contents and pull requests. Its id goes in the `MAGE_BOT_APP_ID` variable and its private key in the `MAGE_BOT_PRIVATE_KEY` secret. The sync and release workflows use its token so that CI runs on the pull requests they open.
 - **Repository settings:** allow auto-merge and squash merging; protect `main` with the CI checks (`Lint and types`, `Test (Python 3.10)` to `Test (Python 3.14)`, `Build`) required.
-- **PyPI trusted publisher** for the `mage-space` project: this repository, workflow `release.yml`, environment `pypi`. Create the `pypi` environment in the repository settings.
+- **PyPI trusted publisher** for the `mage-space` project: this repository, workflow `release.yml`, environment `pypi`. Create the `pypi` environment in the repository settings. To publish an existing tag, such as the first release `v0.0.0`, run the Release workflow by hand with that tag (`gh workflow run release.yml -f tag=v0.0.0`).
 - **`MAGE_API_KEY` secret** (optional) for the nightly smoke test, from an account with a small Gem balance.
