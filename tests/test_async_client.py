@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+import json
+import time
+from collections.abc import AsyncIterator
+
 import httpx
 import pytest
 from conftest import (
@@ -112,6 +117,32 @@ async def test_wait_stops_retrying_a_read_at_the_deadline(
     assert caught.value.request is None
     assert len(server.calls_to("GET", STATUS)) == 1
     assert sum(clock.sleeps) == pytest.approx(0.3)
+
+
+class AsyncTrickle(httpx.AsyncByteStream):
+    """A body that arrives in small chunks, 40 ms apart in real time."""
+
+    def __init__(self, body: bytes) -> None:
+        self.body = body
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        for start in range(0, len(self.body), 16):
+            await asyncio.sleep(0.04)
+            yield self.body[start : start + 16]
+
+
+async def test_wait_stops_a_body_still_arriving_at_the_deadline(
+    async_mage: AsyncMage, server: Server
+) -> None:
+    body = json.dumps(request_body("completed")).encode()
+    server.add("GET", STATUS, lambda _: httpx.Response(200, stream=AsyncTrickle(body)))
+    started = time.monotonic()
+
+    with pytest.raises(MageTimeoutError):
+        await async_mage.requests.wait(REQUEST_ID, timeout=0.1)
+
+    assert time.monotonic() - started < 0.3
+    assert len(server.calls_to("GET", STATUS)) == 1
 
 
 async def test_run_raises_for_a_failed_request(async_mage: AsyncMage, server: Server) -> None:

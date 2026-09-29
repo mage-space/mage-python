@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from types import TracebackType
 from typing import Any, cast
 
@@ -225,7 +225,7 @@ class Mage:
             if timeout <= 0:
                 raise MageConnectionError(f"{method} {url} was not sent: the deadline passed.")
             try:
-                response = self._http.request(
+                request = self._http.build_request(
                     method,
                     url,
                     headers=headers,
@@ -233,6 +233,11 @@ class Mage:
                     params=params,
                     content=content,
                     timeout=timeout,
+                )
+                response = (
+                    self._http.send(request)
+                    if deadline is None
+                    else _receive(self._http, request, deadline)
                 )
             except httpx.TransportError as exc:
                 if retry is Retry.NEVER or attempt >= self.max_retries:
@@ -245,6 +250,43 @@ class Mage:
                     raise error
             _sleep(retry_pause(attempt, deadline, _clock()))
             attempt += 1
+
+
+def _receive(http: httpx.Client, request: httpx.Request, deadline: float) -> httpx.Response:
+    """Sends a request whose whole response must arrive before a wait's deadline.
+
+    HTTPX timeouts bound each network wait, not the response as a whole, so the
+    body is checked against the deadline as it arrives, and a response that
+    completes after the deadline is refused.
+    """
+    response = http.send(request, stream=True)
+    try:
+        assert isinstance(response.stream, httpx.SyncByteStream)
+        response.stream = _DeadlineStream(response.stream, deadline)
+        response.read()
+    finally:
+        response.close()
+    _check_deadline(deadline)
+    return response
+
+
+def _check_deadline(deadline: float) -> None:
+    if _clock() >= deadline:
+        raise httpx.ReadTimeout("The deadline passed before the response arrived.")
+
+
+class _DeadlineStream(httpx.SyncByteStream):
+    def __init__(self, stream: httpx.SyncByteStream, deadline: float) -> None:
+        self._stream = stream
+        self._deadline = deadline
+
+    def __iter__(self) -> Iterator[bytes]:
+        for chunk in self._stream:
+            _check_deadline(self._deadline)
+            yield chunk
+
+    def close(self) -> None:
+        self._stream.close()
 
 
 class Requests:

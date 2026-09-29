@@ -314,19 +314,26 @@ class AsyncRequests:
                     pause = max(0.0, min(pause, deadline - _clock()))
                 await _sleep(pause)
                 delay = next_poll_interval(delay, max_poll_interval)
+            read = self._client._request(
+                "GET",
+                f"/v1/requests/{segment(request_id)}/status",
+                retry=Retry.SAFE,
+                deadline=deadline,
+            )
             try:
-                # The deadline also bounds the read and its retries.
-                current = cast(
-                    GenerationRequest,
-                    await self._client._request(
-                        "GET",
-                        f"/v1/requests/{segment(request_id)}/status",
-                        retry=Retry.SAFE,
-                        deadline=deadline,
-                    ),
+                # HTTPX timeouts bound each network wait, not a whole response, so
+                # the time left bounds the read as a whole: body and retries too.
+                if deadline is None:
+                    current = cast(GenerationRequest, await read)
+                else:
+                    current = cast(
+                        GenerationRequest, await asyncio.wait_for(read, deadline - _clock())
+                    )
+            except (MageError, asyncio.TimeoutError) as exc:
+                late = isinstance(exc, asyncio.TimeoutError) or (
+                    deadline is not None and _clock() >= deadline
                 )
-            except MageError as exc:
-                if timeout is not None and deadline is not None and _clock() >= deadline:
+                if timeout is not None and late:
                     message = timeout_message(request_id, current, timeout)
                     raise MageTimeoutError(message, request=current) from exc
                 raise

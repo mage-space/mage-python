@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import io
+import json
 import uuid
+from collections.abc import Iterator
 from pathlib import Path
 
 import httpx
@@ -334,6 +336,44 @@ def test_wait_stops_retrying_a_read_at_the_deadline(
     assert caught.value.request is None
     assert len(server.calls_to("GET", STATUS)) == 1
     assert sum(clock.sleeps) == pytest.approx(0.3)
+
+
+class Trickle(httpx.SyncByteStream):
+    """A body that arrives in small chunks, `pause` seconds apart on the clock."""
+
+    def __init__(self, clock: Clock, body: bytes, pause: float) -> None:
+        self.clock, self.body, self.pause = clock, body, pause
+
+    def __iter__(self) -> Iterator[bytes]:
+        for start in range(0, len(self.body), 16):
+            self.clock.now += self.pause
+            yield self.body[start : start + 16]
+
+
+def test_wait_stops_a_body_still_arriving_at_the_deadline(
+    mage: Mage, server: Server, clock: Clock
+) -> None:
+    body = json.dumps(request_body("completed")).encode()
+    server.add("GET", STATUS, lambda _: httpx.Response(200, stream=Trickle(clock, body, 0.04)))
+
+    with pytest.raises(MageTimeoutError):
+        mage.requests.wait(REQUEST_ID, timeout=0.1)
+
+    assert len(server.calls_to("GET", STATUS)) == 1
+    assert clock.now - 1000.0 == pytest.approx(0.12)
+
+
+def test_wait_refuses_a_response_that_completes_after_the_deadline(
+    mage: Mage, server: Server, clock: Clock
+) -> None:
+    def slow(_: httpx.Request) -> httpx.Response:
+        clock.now += 0.2
+        return json_reply(200, request_body("completed"))
+
+    server.add("GET", STATUS, slow)
+
+    with pytest.raises(MageTimeoutError):
+        mage.requests.wait(REQUEST_ID, timeout=0.1)
 
 
 def test_run_returns_the_completed_request(mage: Mage, server: Server) -> None:
