@@ -326,8 +326,9 @@ class Requests:
         `max_poll_interval`, with a little jitter. `on_update` receives every state read.
 
         Raises:
-            MageTimeoutError: `timeout` seconds passed first, counting status reads in
-                progress. The request keeps running.
+            MageTimeoutError: `timeout` seconds passed first. A late response is never
+                returned, but a stalled read can overrun the deadline by up to the time
+                that was left when it began. The request keeps running.
         """
         deadline = None if timeout is None else _clock() + timeout
         request_id = request if isinstance(request, str) else request["request_id"]
