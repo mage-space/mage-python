@@ -531,7 +531,7 @@ class MangoConfig(TypedDict):
     """The text prompt."""
     seed: NotRequired[int | None]
     """Integer seed for reproducible output; omit or send null for a random seed."""
-    model_id: NotRequired[Literal["mango", "mango-v2", "mango-v3s", "mango-v3"]]
+    model_id: NotRequired[Literal["mango", "mango-v2", "mango-v3s", "mango-v3", "mango-v3-turbo"]]
     """The model variant to generate with. Default: `"mango-v3"`."""
     aspect_ratio: NotRequired[Literal["21:9", "16:9", "3:2", "5:4", "1:1", "4:5", "2:3", "9:16", "9:21"]]
     """Aspect ratio as `W:H`. Default: `"4:5"`."""
@@ -1589,7 +1589,7 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                 },
                 "model_id": {
                     "type": "string",
-                    "enum": ["mango", "mango-v2", "mango-v3s", "mango-v3"],
+                    "enum": ["mango", "mango-v2", "mango-v3s", "mango-v3", "mango-v3-turbo"],
                     "description": "The model variant to generate with.",
                     "default": "mango-v3",
                 },
