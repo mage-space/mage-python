@@ -549,12 +549,12 @@ class NanoBananaV2Config(TypedDict):
     """The text prompt."""
     seed: NotRequired[int | None]
     """Integer seed for reproducible output; omit or send null for a random seed."""
-    model_id: NotRequired[Literal["nano-banana-v2"]]
-    """The model variant to generate with. Default: `"nano-banana-v2"`."""
+    model_id: NotRequired[Literal["nano-banana-v2", "nano-banana-v2.1"]]
+    """The model variant to generate with. Default: `"nano-banana-v2.1"`."""
     aspect_ratio: NotRequired[Literal["1:1", "3:2", "2:3", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]]
     """Aspect ratio as `W:H`. Default: `"1:1"`."""
     resolution: NotRequired[Literal["512", "1K", "2K", "4K"]]
-    """Output resolution token. Default: `"512"`."""
+    """Output resolution token. Default: `"1K"`."""
     image: NotRequired[str]
     """The reference image. An https URL or a data URL."""
     additional_images: NotRequired[list[str]]
@@ -1663,9 +1663,9 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                 },
                 "model_id": {
                     "type": "string",
-                    "enum": ["nano-banana-v2"],
+                    "enum": ["nano-banana-v2", "nano-banana-v2.1"],
                     "description": "The model variant to generate with.",
-                    "default": "nano-banana-v2",
+                    "default": "nano-banana-v2.1",
                 },
                 "aspect_ratio": {
                     "type": "string",
@@ -1677,7 +1677,7 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                     "type": "string",
                     "enum": ["512", "1K", "2K", "4K"],
                     "description": "Output resolution token.",
-                    "default": "512",
+                    "default": "1K",
                 },
                 "image": {
                     "anyOf": [
