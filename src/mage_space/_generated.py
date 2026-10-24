@@ -26,6 +26,8 @@ __all__ = [
     "ChromaConfig",
     "CreateCharacterRequest",
     "CreateReferenceRequest",
+    "ElevenMusicConfig",
+    "ElevenSpeechConfig",
     "ErrorBody",
     "ErrorBodyError",
     "ErrorCode",
@@ -48,6 +50,7 @@ __all__ = [
     "MangoConfig",
     "MelonConfig",
     "MinimaxH3Config",
+    "MossImageConfig",
     "NanoBananaV2Config",
     "PlumConfig",
     "RaspberryConfig",
@@ -67,7 +70,7 @@ __all__ = [
 ErrorCode = Literal["unauthorized", "invalid_request", "invalid_config", "architecture_not_found", "architecture_retired", "request_not_found", "character_not_found", "reference_not_found", "not_found", "insufficient_gems", "forbidden", "content_blocked", "request_finished", "handle_taken", "too_many_requests", "generation_failed", "internal_error"]
 """Every error code the API documents. New codes may appear."""
 
-ArchitectureId = Literal["anima", "chroma", "flux2", "gpt_image_2", "grok_image", "guava", "hidream", "krea_2", "mango", "nano_banana_v2", "sdxl_plus", "stable_diffusion_v15", "stable_diffusion_v35_large", "stable_diffusion_xl", "z_image", "berry", "blueberry", "cherry", "grok_video", "kiwi", "lemon", "ltx_video", "melon", "minimax_h3", "plum", "raspberry", "wan_22", "seed_audio"]
+ArchitectureId = Literal["anima", "chroma", "flux2", "gpt_image_2", "grok_image", "guava", "hidream", "krea_2", "mango", "moss_image", "nano_banana_v2", "sdxl_plus", "stable_diffusion_v15", "stable_diffusion_v35_large", "stable_diffusion_xl", "z_image", "berry", "blueberry", "cherry", "grok_video", "kiwi", "lemon", "ltx_video", "melon", "minimax_h3", "plum", "raspberry", "wan_22", "eleven_music", "eleven_speech", "seed_audio"]
 """The architectures this SDK version knows about."""
 
 
@@ -543,6 +546,24 @@ class MangoConfig(TypedDict):
     """Additional reference images. Each an https URL or a data URL."""
 
 
+class MossImageConfig(TypedDict):
+    """A partial config for MOSS-Image. Sent to `POST /v1/moss_image/generate`."""
+    prompt: str
+    """The text prompt."""
+    seed: NotRequired[int | None]
+    """Integer seed for reproducible output; omit or send null for a random seed."""
+    model_id: NotRequired[Literal["moss-image"]]
+    """The model variant to generate with. Default: `"moss-image"`."""
+    aspect_ratio: NotRequired[Literal["21:9", "16:9", "3:2", "5:4", "1:1", "4:5", "2:3", "9:16", "9:21"]]
+    """Aspect ratio as `W:H`. Default: `"4:5"`."""
+    resolution: NotRequired[Literal["1k", "2k"]]
+    """Output resolution token. Default: `"1k"`."""
+    num_inference_steps: NotRequired[float]
+    """Default: `50`."""
+    guidance_scale: NotRequired[float]
+    """Default: `3`."""
+
+
 class NanoBananaV2Config(TypedDict):
     """A partial config for Nano Banana 2. Sent to `POST /v1/nano_banana_v2/generate`."""
     prompt: str
@@ -927,8 +948,8 @@ class PlumConfig(TypedDict):
     """The text prompt."""
     seed: NotRequired[int | None]
     """Integer seed for reproducible output; omit or send null for a random seed."""
-    model_id: NotRequired[Literal["plum", "plum-max"]]
-    """The model variant to generate with. Default: `"plum-max"`."""
+    model_id: NotRequired[Literal["plum", "plum-max", "plum-fast"]]
+    """The model variant to generate with. Default: `"plum-fast"`."""
     aspect_ratio: NotRequired[Literal["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"]]
     """Aspect ratio as `W:H`. Default: `"16:9"`."""
     resolution: NotRequired[Literal["768P", "2K", "480P"]]
@@ -997,6 +1018,34 @@ class Wan22Config(TypedDict):
     """Default: `12`."""
     num_frames: NotRequired[float]
     """Default: `81`."""
+
+
+class ElevenMusicConfig(TypedDict):
+    """A partial config for Eleven Music. Sent to `POST /v1/eleven_music/generate`."""
+    prompt: str
+    """The text prompt."""
+    seed: NotRequired[int | None]
+    """Integer seed for reproducible output; omit or send null for a random seed."""
+    model_id: NotRequired[Literal["eleven-music-v2.5"]]
+    """The model variant to generate with. Default: `"eleven-music-v2.5"`."""
+    duration: NotRequired[Literal["10", "30", "60", "120", "180", "300"]]
+    """Clip length in seconds, as a token. Default: `"30"`."""
+    instrumental: NotRequired[bool]
+    """Default: `false`."""
+
+
+class ElevenSpeechConfig(TypedDict):
+    """A partial config for Eleven Speech. Sent to `POST /v1/eleven_speech/generate`."""
+    prompt: str
+    """The text prompt."""
+    seed: NotRequired[int | None]
+    """Integer seed for reproducible output; omit or send null for a random seed."""
+    model_id: NotRequired[Literal["eleven-v4"]]
+    """The model variant to generate with. Default: `"eleven-v4"`."""
+    voice: NotRequired[Literal["darian", "talia", "elara", "baxter", "eldrin", "elowen", "kaelen", "lawrence", "alicia", "maisie", "warren", "jade", "caleb", "sawyer", "florence", "wyatt"]]
+    """The voice that speaks the prompt. Default: `"darian"`."""
+    stability: NotRequired[float]
+    """Default: `0.5`."""
 
 
 class SeedAudioConfig(TypedDict):
@@ -1633,6 +1682,59 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                         ],
                     },
                     "description": "Additional reference images. Each an https URL or a data URL.",
+                },
+            },
+            "required": ["prompt"],
+            "additionalProperties": True,
+        },
+    },
+    "moss_image": {
+        "name": "MOSS-Image",
+        "type": "image",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text prompt.",
+                },
+                "seed": {
+                    "anyOf": [
+                        {
+                            "type": "integer",
+                        },
+                        {
+                            "type": "null",
+                        },
+                    ],
+                    "description": "Integer seed for reproducible output; omit or send null for a random seed.",
+                },
+                "model_id": {
+                    "type": "string",
+                    "enum": ["moss-image"],
+                    "description": "The model variant to generate with.",
+                    "default": "moss-image",
+                },
+                "aspect_ratio": {
+                    "type": "string",
+                    "enum": ["21:9", "16:9", "3:2", "5:4", "1:1", "4:5", "2:3", "9:16", "9:21"],
+                    "description": "Aspect ratio as `W:H`.",
+                    "default": "4:5",
+                },
+                "resolution": {
+                    "type": "string",
+                    "enum": ["1k", "2k"],
+                    "description": "Output resolution token.",
+                    "default": "1k",
+                },
+                "num_inference_steps": {
+                    "type": "number",
+                    "default": 50,
+                },
+                "guidance_scale": {
+                    "type": "number",
+                    "default": 3,
                 },
             },
             "required": ["prompt"],
@@ -3018,9 +3120,9 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                 },
                 "model_id": {
                     "type": "string",
-                    "enum": ["plum", "plum-max"],
+                    "enum": ["plum", "plum-max", "plum-fast"],
                     "description": "The model variant to generate with.",
-                    "default": "plum-max",
+                    "default": "plum-fast",
                 },
                 "aspect_ratio": {
                     "type": "string",
@@ -3289,6 +3391,92 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                 "num_frames": {
                     "type": "number",
                     "default": 81,
+                },
+            },
+            "required": ["prompt"],
+            "additionalProperties": True,
+        },
+    },
+    "eleven_music": {
+        "name": "Eleven Music",
+        "type": "audio",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text prompt.",
+                },
+                "seed": {
+                    "anyOf": [
+                        {
+                            "type": "integer",
+                        },
+                        {
+                            "type": "null",
+                        },
+                    ],
+                    "description": "Integer seed for reproducible output; omit or send null for a random seed.",
+                },
+                "model_id": {
+                    "type": "string",
+                    "enum": ["eleven-music-v2.5"],
+                    "description": "The model variant to generate with.",
+                    "default": "eleven-music-v2.5",
+                },
+                "duration": {
+                    "type": "string",
+                    "enum": ["10", "30", "60", "120", "180", "300"],
+                    "description": "Clip length in seconds, as a token.",
+                    "default": "30",
+                },
+                "instrumental": {
+                    "type": "boolean",
+                    "default": False,
+                },
+            },
+            "required": ["prompt"],
+            "additionalProperties": True,
+        },
+    },
+    "eleven_speech": {
+        "name": "Eleven Speech",
+        "type": "audio",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text prompt.",
+                },
+                "seed": {
+                    "anyOf": [
+                        {
+                            "type": "integer",
+                        },
+                        {
+                            "type": "null",
+                        },
+                    ],
+                    "description": "Integer seed for reproducible output; omit or send null for a random seed.",
+                },
+                "model_id": {
+                    "type": "string",
+                    "enum": ["eleven-v4"],
+                    "description": "The model variant to generate with.",
+                    "default": "eleven-v4",
+                },
+                "voice": {
+                    "type": "string",
+                    "enum": ["darian", "talia", "elara", "baxter", "eldrin", "elowen", "kaelen", "lawrence", "alicia", "maisie", "warren", "jade", "caleb", "sawyer", "florence", "wyatt"],
+                    "description": "The voice that speaks the prompt.",
+                    "default": "darian",
+                },
+                "stability": {
+                    "type": "number",
+                    "default": 0.5,
                 },
             },
             "required": ["prompt"],
