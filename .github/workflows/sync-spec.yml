@@ -4,7 +4,8 @@ name: Sync API spec
 # types from it. A change becomes a pull request titled by what it does to clients:
 #   feat!: removes or tightens something (any oasdiff breaking error or warning, such as a
 #          removed optional field); left for review
-#   feat:  adds models, fields, or options; merges itself once CI passes
+#   feat:  adds models, fields, options, error codes, or provider block reasons; merges
+#          itself once CI passes
 #   docs:  wording only; merges itself once CI passes
 on:
   schedule:
@@ -69,8 +70,16 @@ jobs:
         if: steps.fetch.outputs.changed == 'true'
         run: |
           new="$RUNNER_TEMP/openapi.json"
-          # Any failure to compare counts as breaking, so a person looks at it.
-          if oasdiff breaking spec/openapi.json "$new" --fail-on WARN > "$RUNNER_TEMP/breaking.txt"; then
+          # A value added to an error code or a provider block reason is not breaking:
+          # the types hold both as open sets (`str`). Any failure to compare counts as
+          # breaking, so a person looks at it.
+          if oasdiff breaking spec/openapi.json "$new" --format json > "$RUNNER_TEMP/breaking.json" \
+            && jq --raw-output '.[]
+              | select(.level >= 2)
+              | select(.id == "response-property-enum-value-added"
+                  and (.text | test("`error/(anyOf\\[subschema #[0-9]+\\]/)?(code|reason)` response property")) | not)
+              | "\(.operation) \(.path): \(.text)"' "$RUNNER_TEMP/breaking.json" > "$RUNNER_TEMP/breaking.txt" \
+            && [ ! -s "$RUNNER_TEMP/breaking.txt" ]; then
             breaking=false
             title='feat: sync API spec'
           else
@@ -81,11 +90,11 @@ jobs:
           if [ "$breaking" = false ] && [ "$changes" = 0 ]; then
             title='docs: sync API spec'
           fi
-          delimiter="EOF_$(openssl rand -hex 8)"
+          echo "breaking=$breaking" >> "$GITHUB_OUTPUT"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+          # The body goes through a file: a changelog that touches every endpoint is
+          # too long to pass to the next step as an argument.
           {
-            echo "breaking=$breaking"
-            echo "title=$title"
-            echo "body<<$delimiter"
             echo "Syncs \`spec/openapi.json\` with $SPEC_URL and regenerates the types."
             echo
             if [ "$breaking" = true ]; then
@@ -99,8 +108,7 @@ jobs:
               echo
             fi
             oasdiff changelog spec/openapi.json "$new" --format markdown
-            echo "$delimiter"
-          } >> "$GITHUB_OUTPUT"
+          } > "$RUNNER_TEMP/body.md"
           cp "$new" spec/openapi.json
 
       - uses: astral-sh/setup-uv@v10.2.0
@@ -122,7 +130,7 @@ jobs:
             src/mage_space/_generated.py
           commit-message: ${{ steps.classify.outputs.title }}
           title: ${{ steps.classify.outputs.title }}
-          body: ${{ steps.classify.outputs.body }}
+          body-path: ${{ runner.temp }}/body.md
           labels: ${{ steps.classify.outputs.breaking == 'true' && 'needs-review' || '' }}
 
       - name: Merge when CI passes

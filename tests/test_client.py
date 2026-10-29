@@ -401,6 +401,34 @@ def test_run_raises_when_the_request_fails(mage: Mage, server: Server) -> None:
     assert caught.value.code == "content_blocked"
     assert caught.value.message == "The output was blocked."
     assert caught.value.request["status"] == "failed"
+    assert caught.value.reason is None
+    assert caught.value.stage is None
+
+
+def test_run_raises_with_the_reason_when_the_provider_blocks(mage: Mage, server: Server) -> None:
+    message = (
+        "The model's provider refused a real person or celebrity in the prompt or images. "
+        "Any gems charged were refunded."
+    )
+    failed = request_body(
+        "failed",
+        error={
+            "code": "content_blocked",
+            "message": message,
+            "reason": "likeness",
+            "stage": "input",
+        },
+    )
+    server.add("POST", GENERATE, json_reply(202, request_body()))
+    server.add("GET", STATUS, json_reply(200, failed))
+
+    with pytest.raises(MageGenerationError) as caught:
+        mage.run("mango", {"prompt": "x"})
+
+    assert caught.value.code == "content_blocked"
+    assert caught.value.reason == "likeness"
+    assert caught.value.stage == "input"
+    assert str(caught.value) == f"content_blocked (likeness): {message}"
 
 
 def test_run_raises_when_the_request_is_cancelled(mage: Mage, server: Server) -> None:

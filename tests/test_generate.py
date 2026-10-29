@@ -18,6 +18,7 @@ sys.modules["generate"] = generate
 _spec.loader.exec_module(generate)
 
 CODES = ["unauthorized", "not_found"]
+REASONS = ["likeness", "unspecified"]
 THING = {
     "type": "object",
     "properties": {
@@ -67,7 +68,10 @@ def spec_with(**config_properties: Any) -> dict[str, Any]:
                             "anyOf": [
                                 {
                                     "type": "object",
-                                    "properties": {"code": {"type": "string", "enum": CODES}},
+                                    "properties": {
+                                        "code": {"type": "string", "enum": CODES},
+                                        "reason": {"type": "string", "enum": REASONS},
+                                    },
                                     "required": ["code"],
                                 },
                                 {"type": "null"},
@@ -135,12 +139,15 @@ def test_names_nested_types_and_reuses_components() -> None:
     assert "GenerationRequest" in ns and "ErrorBody" in ns
 
 
-def test_error_codes_are_open_strings_with_a_literal_alias() -> None:
+def test_error_codes_and_block_reasons_are_open_strings_with_literal_aliases() -> None:
     ns = load(spec_with())
 
     assert get_type_hints(ns["ErrorBodyError"])["code"] is str
-    assert get_type_hints(ns["GenerationRequestError"])["code"] is str
+    request_error = get_type_hints(ns["GenerationRequestError"])
+    assert request_error["code"] is str
+    assert request_error["reason"] is str
     assert ns["ErrorCode"].__args__ == tuple(CODES)
+    assert ns["ProviderBlockReason"].__args__ == tuple(REASONS)
 
 
 def test_properties_that_are_not_identifiers_use_the_functional_syntax() -> None:

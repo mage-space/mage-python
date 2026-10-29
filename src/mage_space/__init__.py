@@ -10,7 +10,13 @@ from ._errors import (
     MageGenerationError,
     MageTimeoutError,
 )
-from ._generated import ARCHITECTURES, ArchitectureId, ArchitectureInfo, ErrorCode
+from ._generated import (
+    ARCHITECTURES,
+    ArchitectureId,
+    ArchitectureInfo,
+    ErrorCode,
+    ProviderBlockReason,
+)
 from ._version import __version__
 
 __all__ = [
@@ -25,6 +31,7 @@ __all__ = [
     "MageError",
     "MageGenerationError",
     "MageTimeoutError",
+    "ProviderBlockReason",
     "UploadData",
     "__version__",
 ]

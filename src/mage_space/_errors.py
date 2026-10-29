@@ -85,6 +85,15 @@ class MageGenerationError(MageError):
         """The final state of the request."""
         self.code = code
         """`error.code` of the failed request (for example `content_blocked`), or `cancelled`."""
+        self.reason: str | None = error.get("reason") if error else None
+        """Why the model's external provider refused the content (a `ProviderBlockReason`, such
+        as `likeness` or `ip`), or None when the provider did not block it. A block has the code
+        `content_blocked` and its Gems are refunded; retrying the same request usually gets the
+        same block."""
+        self.stage: str | None = error.get("stage") if error else None
+        """With `reason`: `input` when the provider refused the prompt or input media, `output`
+        when it refused the generated media, else None."""
 
     def __str__(self) -> str:
-        return f"{self.code}: {self.message}"
+        label = f"{self.code} ({self.reason})" if self.reason else self.code
+        return f"{label}: {self.message}"
