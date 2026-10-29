@@ -53,6 +53,7 @@ __all__ = [
     "MossImageConfig",
     "NanoBananaV2Config",
     "PlumConfig",
+    "ProviderBlockReason",
     "RaspberryConfig",
     "Reference",
     "ReferenceList",
@@ -67,8 +68,11 @@ __all__ = [
     "ZImageConfig",
 ]
 
-ErrorCode = Literal["unauthorized", "invalid_request", "invalid_config", "architecture_not_found", "architecture_retired", "request_not_found", "character_not_found", "reference_not_found", "not_found", "insufficient_gems", "forbidden", "content_blocked", "request_finished", "handle_taken", "too_many_requests", "generation_failed", "internal_error"]
+ErrorCode = Literal["unauthorized", "invalid_request", "invalid_config", "architecture_not_found", "architecture_retired", "request_not_found", "character_not_found", "reference_not_found", "not_found", "insufficient_gems", "payment_required", "forbidden", "content_blocked", "request_finished", "handle_taken", "too_many_requests", "generation_failed", "internal_error"]
 """Every error code the API documents. New codes may appear."""
+
+ProviderBlockReason = Literal["likeness", "ip", "nsfw", "minors", "audio", "unspecified"]
+"""Every reason the API documents for a model's provider refusing a request. New reasons may appear; treat an unknown one as `unspecified`."""
 
 ArchitectureId = Literal["anima", "chroma", "flux2", "gpt_image_2", "grok_image", "guava", "hidream", "krea_2", "mango", "moss_image", "nano_banana_v2", "sdxl_plus", "stable_diffusion_v15", "stable_diffusion_v35_large", "stable_diffusion_xl", "z_image", "berry", "blueberry", "cherry", "grok_video", "kiwi", "lemon", "ltx_video", "melon", "minimax_h3", "plum", "raspberry", "wan_22", "eleven_music", "eleven_speech", "seed_audio"]
 """The architectures this SDK version knows about."""
@@ -111,6 +115,10 @@ class GenerationRequestError(TypedDict):
     """A stable error code."""
     message: str
     """What went wrong, for a person."""
+    reason: NotRequired[str]
+    """Present on `content_blocked` when the model's external provider refused the content, not Mage: `likeness` (a real person or celebrity), `ip` (copyrighted or trademarked material), `nsfw` (content past the model's own limit: sexual, violent, or otherwise sensitive), `minors` (may involve a minor), `audio` (the audio, usually copyrighted music or a real voice), or `unspecified` (the provider gave no reason). An open set: treat an unknown value as `unspecified`."""
+    stage: NotRequired[Literal["input", "output"] | None]
+    """With `reason`: `input` when the provider refused the prompt or input media, `output` when it refused the generated media, or null when it did not say."""
 
 
 class GenerationRequest(TypedDict):

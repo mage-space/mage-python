@@ -32,7 +32,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) for commit mess
 | Title | Meaning | Merge |
 | --- | --- | --- |
 | `feat!: sync API spec` | Something was removed or tightened (a breaking change) | Waits for review (`needs-review` label) |
-| `feat: sync API spec` | Models, fields, or options were added | Automatic once CI passes |
+| `feat: sync API spec` | Models, fields, options, error codes, or provider block reasons were added | Automatic once CI passes |
 | `docs: sync API spec` | Wording only | Automatic once CI passes |
 
 A model newer than the installed SDK already works by its id, so a lag here only delays its types.

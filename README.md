@@ -142,7 +142,7 @@ mage.references.delete(coat["id"])
 | --- | --- |
 | `MageAPIError` | The API answered with an error: `status`, `code` (for example `insufficient_gems`, `invalid_config`), `message`, `request_id`, `body`. |
 | `MageConnectionError` | No response at all (network error or timeout), after retries. |
-| `MageGenerationError` | `run()` ended with a failed or cancelled request: `code` (for example `content_blocked`) and the final `request`. |
+| `MageGenerationError` | `run()` ended with a failed or cancelled request: `code` (for example `content_blocked`), `reason` and `stage` for a [provider block](#provider-blocks), and the final `request`. |
 | `MageTimeoutError` | `wait()` or `run()` passed its `timeout`. A response that finishes late is never returned; `Mage` checks the deadline between network reads, so a stalled read can overrun it by up to the time that was left when the read began (`AsyncMage` stops on time). `request` is the last state read (None if none was); the request keeps running. |
 
 All four derive from `MageError`.
@@ -162,6 +162,32 @@ except MageGenerationError as error:
 ```
 
 New error codes may appear; treat an unknown `code` by its HTTP `status`.
+
+### Provider blocks
+
+Some models run on an external provider that can refuse a request: a real person, copyrighted material, mature content, and so on. The request fails with the code `content_blocked`, its Gems are refunded, and `MageGenerationError.reason` says why:
+
+| `reason` | The provider refused | What to change |
+| --- | --- | --- |
+| `likeness` | A real person or celebrity | Remove real people from the prompt and images |
+| `ip` | Copyrighted or trademarked material | Describe an original design instead of a character, brand, artist, or lyrics |
+| `nsfw` | Content past the model's own limit | Try another model, or soften the request |
+| `minors` | Content that may involve a minor | Make sure everyone depicted is clearly an adult |
+| `audio` | The audio, usually copyrighted music or a real person's voice | Remove music or voices from the inputs, or generate without audio |
+| `unspecified` | Something it did not name | Reword the prompt or change the images |
+
+`stage` is `input` when the provider refused the prompt or input media, `output` when it refused the generated media, and None when it did not say. Retrying the same request usually gets the same block, so change the request or the model instead. New reasons may appear; treat one you do not know as `unspecified`. A `content_blocked` request without a `reason` was blocked by Mage's own content policy, which keeps the Gems.
+
+```python
+from mage_space import MageGenerationError
+
+try:
+    mage.run("mango", {"prompt": "A portrait of a famous actor"})
+except MageGenerationError as error:
+    if error.reason == "likeness":
+        print("Describe an original person instead, or pick another model.")
+    raise
+```
 
 ## Retries and idempotency
 

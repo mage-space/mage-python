@@ -88,6 +88,12 @@ class Generator:
         }
         error = self.components["Error"]["properties"]["error"]["properties"]["code"]
         self.error_codes: list[str] = error["enum"]
+        request_error = next(
+            option
+            for option in self.components["Request"]["properties"]["error"]["anyOf"]
+            if option.get("type") == "object"
+        )
+        self.block_reasons: list[str] = request_error["properties"]["reason"]["enum"]
         self.definitions: list[str] = []
         self.defined: dict[str, str] = {}  # python name -> canonical schema
         self.public: list[str] = []
@@ -106,7 +112,8 @@ class Generator:
         if "const" in schema:
             return f"Literal[{json.dumps(schema['const'])}]"
         if "enum" in schema:
-            if schema["enum"] == self.error_codes:
+            # Open sets: the API may add values within a version.
+            if schema["enum"] in (self.error_codes, self.block_reasons):
                 return "str"
             return "Literal[" + ", ".join(json.dumps(v) for v in schema["enum"]) + "]"
         if "anyOf" in schema:
@@ -213,6 +220,7 @@ class Generator:
             self.define_object(pascal(arch_id) + "Config", schema, doc)
 
         codes = ", ".join(json.dumps(code) for code in self.error_codes)
+        reasons = ", ".join(json.dumps(reason) for reason in self.block_reasons)
         ids = ", ".join(json.dumps(arch_id) for arch_id, _, _, _ in architectures)
         catalog = {
             arch_id: {
@@ -222,7 +230,13 @@ class Generator:
             }
             for arch_id, summary, kind, body in architectures
         }
-        extra_public = ["ARCHITECTURES", "ArchitectureId", "ArchitectureInfo", "ErrorCode"]
+        extra_public = [
+            "ARCHITECTURES",
+            "ArchitectureId",
+            "ArchitectureInfo",
+            "ErrorCode",
+            "ProviderBlockReason",
+        ]
         public = sorted(self.public + extra_public)
 
         out = [HEADER, "\n", "from typing import Any\n\n"]
@@ -230,6 +244,14 @@ class Generator:
         out.append("__all__ = [\n" + "".join(f"    {json.dumps(n)},\n" for n in public) + "]\n\n")
         out.append(f"ErrorCode = Literal[{codes}]\n")
         out.append(docstring("Every error code the API documents. New codes may appear.", ""))
+        out.append(f"\nProviderBlockReason = Literal[{reasons}]\n")
+        out.append(
+            docstring(
+                "Every reason the API documents for a model's provider refusing a request. "
+                "New reasons may appear; treat an unknown one as `unspecified`.",
+                "",
+            )
+        )
         out.append(f"\nArchitectureId = Literal[{ids}]\n")
         out.append(docstring("The architectures this SDK version knows about.", ""))
         for definition in self.definitions:
