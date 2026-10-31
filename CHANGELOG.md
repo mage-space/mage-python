@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.2](https://github.com/mage-space/mage-python/compare/v0.0.1...v0.0.2) (2026-10-31)
+
+
+### Features
+
+* sync API spec ([#14](https://github.com/mage-space/mage-python/issues/14)) ([d7f7a5e](https://github.com/mage-space/mage-python/commit/d7f7a5e52ca9a6c6cf9f88fc7dca0ccca2975d77))
+
 ## [0.0.1](https://github.com/mage-space/mage-python/compare/v0.0.0...v0.0.1) (2026-10-29)
 
 
