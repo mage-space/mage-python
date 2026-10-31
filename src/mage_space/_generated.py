@@ -47,6 +47,7 @@ __all__ = [
     "Krea2Config",
     "LemonConfig",
     "LtxVideoConfig",
+    "MagejutsuConfig",
     "MangoConfig",
     "MelonConfig",
     "MinimaxH3Config",
@@ -68,13 +69,13 @@ __all__ = [
     "ZImageConfig",
 ]
 
-ErrorCode = Literal["unauthorized", "invalid_request", "invalid_config", "architecture_not_found", "architecture_retired", "request_not_found", "character_not_found", "reference_not_found", "not_found", "insufficient_gems", "payment_required", "forbidden", "content_blocked", "request_finished", "handle_taken", "too_many_requests", "generation_failed", "internal_error"]
+ErrorCode = Literal["unauthorized", "invalid_request", "invalid_config", "architecture_not_found", "architecture_retired", "request_not_found", "character_not_found", "reference_not_found", "not_found", "insufficient_gems", "payment_required", "forbidden", "content_blocked", "request_finished", "handle_taken", "too_many_requests", "generation_failed", "preprocess_refused", "internal_error"]
 """Every error code the API documents. New codes may appear."""
 
 ProviderBlockReason = Literal["likeness", "ip", "nsfw", "minors", "audio", "unspecified"]
 """Every reason the API documents for a model's provider refusing a request. New reasons may appear; treat an unknown one as `unspecified`."""
 
-ArchitectureId = Literal["anima", "chroma", "flux2", "gpt_image_2", "grok_image", "guava", "hidream", "krea_2", "mango", "moss_image", "nano_banana_v2", "sdxl_plus", "stable_diffusion_v15", "stable_diffusion_v35_large", "stable_diffusion_xl", "z_image", "berry", "blueberry", "cherry", "grok_video", "kiwi", "lemon", "ltx_video", "melon", "minimax_h3", "plum", "raspberry", "wan_22", "eleven_music", "eleven_speech", "seed_audio"]
+ArchitectureId = Literal["anima", "chroma", "flux2", "gpt_image_2", "grok_image", "guava", "hidream", "krea_2", "mango", "moss_image", "nano_banana_v2", "sdxl_plus", "stable_diffusion_v15", "stable_diffusion_v35_large", "stable_diffusion_xl", "z_image", "berry", "blueberry", "cherry", "grok_video", "kiwi", "lemon", "ltx_video", "magejutsu", "melon", "minimax_h3", "plum", "raspberry", "wan_22", "eleven_music", "eleven_speech", "seed_audio"]
 """The architectures this SDK version knows about."""
 
 
@@ -893,6 +894,28 @@ class LtxVideoConfig(TypedDict):
     decode_noise_scale: NotRequired[float]
     """Default: `0.025`."""
     prompt_enhance: NotRequired[bool]
+    """Default: `true`."""
+
+
+class MagejutsuConfig(TypedDict):
+    """A partial config for Magejutsu. Sent to `POST /v1/magejutsu/generate`."""
+    prompt: NotRequired[str]
+    """Optional directions; leave out to let the model decide. Default: `""`."""
+    seed: NotRequired[int | None]
+    """Integer seed for reproducible output; omit or send null for a random seed."""
+    model_id: NotRequired[Literal["magejutsu", "magejutsu-lite", "magejutsu-feather"]]
+    """The model variant to generate with. Default: `"magejutsu"`."""
+    resolution: NotRequired[Literal["480p", "720p", "1080p"]]
+    """Output resolution token. Default: `"720p"`."""
+    mode: NotRequired[Literal["motion_transfer", "object_swap"]]
+    """One of the listed tokens. Default: `"motion_transfer"`."""
+    image: NotRequired[str]
+    """The reference image. An https URL or a data URL."""
+    additional_images: NotRequired[list[str]]
+    """Additional reference images. Each an https URL or a data URL."""
+    videos: NotRequired[list[str]]
+    """The source videos. Each an https URL or a data URL."""
+    keep_original_audio: NotRequired[bool]
     """Default: `true`."""
 
 
@@ -2866,6 +2889,100 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
             },
             "required": ["prompt"],
             "additionalProperties": True,
+        },
+    },
+    "magejutsu": {
+        "name": "Magejutsu",
+        "type": "video",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": "Optional directions; leave out to let the model decide.",
+                    "default": "",
+                },
+                "seed": {
+                    "anyOf": [
+                        {
+                            "type": "integer",
+                        },
+                        {
+                            "type": "null",
+                        },
+                    ],
+                    "description": "Integer seed for reproducible output; omit or send null for a random seed.",
+                },
+                "model_id": {
+                    "type": "string",
+                    "enum": ["magejutsu", "magejutsu-lite", "magejutsu-feather"],
+                    "description": "The model variant to generate with.",
+                    "default": "magejutsu",
+                },
+                "resolution": {
+                    "type": "string",
+                    "enum": ["480p", "720p", "1080p"],
+                    "description": "Output resolution token.",
+                    "default": "720p",
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": ["motion_transfer", "object_swap"],
+                    "description": "One of the listed tokens.",
+                    "default": "motion_transfer",
+                },
+                "image": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "uri",
+                        },
+                        {
+                            "type": "string",
+                            "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                        },
+                    ],
+                    "description": "The reference image. An https URL or a data URL.",
+                },
+                "additional_images": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                            },
+                            {
+                                "type": "string",
+                                "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                            },
+                        ],
+                    },
+                    "description": "Additional reference images. Each an https URL or a data URL.",
+                },
+                "videos": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                            },
+                            {
+                                "type": "string",
+                                "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                            },
+                        ],
+                    },
+                    "description": "The source videos. Each an https URL or a data URL.",
+                },
+                "keep_original_audio": {
+                    "type": "boolean",
+                    "default": True,
+                },
+            },
+            "additionalProperties": True,
+            "required": [],
         },
     },
     "melon": {
