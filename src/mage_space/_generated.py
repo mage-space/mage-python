@@ -465,8 +465,8 @@ class GrokImageConfig(TypedDict):
     """The text prompt."""
     seed: NotRequired[int | None]
     """Integer seed for reproducible output; omit or send null for a random seed."""
-    model_id: NotRequired[Literal["grok-imagine-image", "grok-imagine-image-quality", "grok-imagine-image-2.0"]]
-    """The model variant to generate with. Default: `"grok-imagine-image-quality"`."""
+    model_id: NotRequired[Literal["grok-imagine-image", "grok-imagine-image-2.0"]]
+    """The model variant to generate with. Default: `"grok-imagine-image-2.0"`."""
     aspect_ratio: NotRequired[Literal["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20"]]
     """Aspect ratio as `W:H`. Default: `"1:1"`."""
     resolution: NotRequired[Literal["1k", "2k"]]
@@ -1405,9 +1405,9 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                 },
                 "model_id": {
                     "type": "string",
-                    "enum": ["grok-imagine-image", "grok-imagine-image-quality", "grok-imagine-image-2.0"],
+                    "enum": ["grok-imagine-image", "grok-imagine-image-2.0"],
                     "description": "The model variant to generate with.",
-                    "default": "grok-imagine-image-quality",
+                    "default": "grok-imagine-image-2.0",
                 },
                 "aspect_ratio": {
                     "type": "string",
