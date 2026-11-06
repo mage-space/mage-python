@@ -60,12 +60,14 @@ __all__ = [
     "ReferenceList",
     "SdxlPlusConfig",
     "SeedAudioConfig",
+    "SeedanceConfig",
     "StableDiffusionV15Config",
     "StableDiffusionV35LargeConfig",
     "StableDiffusionXlConfig",
     "UploadRequest",
     "UploadTicket",
     "Wan22Config",
+    "Wan3Config",
     "ZImageConfig",
 ]
 
@@ -75,7 +77,7 @@ ErrorCode = Literal["unauthorized", "invalid_request", "invalid_config", "archit
 ProviderBlockReason = Literal["likeness", "ip", "nsfw", "minors", "audio", "unspecified"]
 """Every reason the API documents for a model's provider refusing a request. New reasons may appear; treat an unknown one as `unspecified`."""
 
-ArchitectureId = Literal["anima", "chroma", "flux2", "gpt_image_2", "grok_image", "guava", "hidream", "krea_2", "mango", "moss_image", "nano_banana_v2", "sdxl_plus", "stable_diffusion_v15", "stable_diffusion_v35_large", "stable_diffusion_xl", "z_image", "berry", "blueberry", "cherry", "grok_video", "kiwi", "lemon", "ltx_video", "magejutsu", "melon", "minimax_h3", "plum", "raspberry", "wan_22", "eleven_music", "eleven_speech", "seed_audio"]
+ArchitectureId = Literal["anima", "chroma", "flux2", "gpt_image_2", "grok_image", "guava", "hidream", "krea_2", "mango", "moss_image", "nano_banana_v2", "sdxl_plus", "stable_diffusion_v15", "stable_diffusion_v35_large", "stable_diffusion_xl", "z_image", "berry", "blueberry", "cherry", "grok_video", "kiwi", "lemon", "ltx_video", "magejutsu", "melon", "minimax_h3", "plum", "raspberry", "seedance", "wan_3", "wan_22", "eleven_music", "eleven_speech", "seed_audio"]
 """The architectures this SDK version knows about."""
 
 
@@ -445,18 +447,24 @@ class GptImage2Config(TypedDict):
     """The text prompt."""
     seed: NotRequired[int | None]
     """Integer seed for reproducible output; omit or send null for a random seed."""
-    model_id: NotRequired[Literal["gpt-image-2", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst"]]
+    model_id: NotRequired[Literal["gpt-image-2", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "gpt-image-2.6-flare", "gpt-image-2.6-sunburst"]]
     """The model variant to generate with. Default: `"gpt-image-2"`."""
     aspect_ratio: NotRequired[Literal["21:9", "16:9", "3:2", "5:4", "1:1", "4:5", "2:3", "9:16", "9:21"]]
     """Aspect ratio as `W:H`. Default: `"4:5"`."""
     resolution: NotRequired[Literal["1K", "2K"]]
     """Output resolution token. Default: `"1K"`."""
+    output_format: NotRequired[Literal["jpeg", "gif"]]
+    """The file to make: `jpeg` for a still, or `gif` for an animation on a GPT Image 2.6 model. Default: `"jpeg"`."""
     image: NotRequired[str]
     """The reference image. An https URL or a data URL."""
     additional_images: NotRequired[list[str]]
     """Additional reference images. Each an https URL or a data URL."""
     quality: NotRequired[str]
     """Default: `"low"`."""
+    frame_count: NotRequired[float]
+    """Default: `9`."""
+    frame_duration_ms: NotRequired[float]
+    """Default: `200`."""
 
 
 class GrokImageConfig(TypedDict):
@@ -465,8 +473,8 @@ class GrokImageConfig(TypedDict):
     """The text prompt."""
     seed: NotRequired[int | None]
     """Integer seed for reproducible output; omit or send null for a random seed."""
-    model_id: NotRequired[Literal["grok-imagine-image", "grok-imagine-image-quality", "grok-imagine-image-2.0"]]
-    """The model variant to generate with. Default: `"grok-imagine-image-quality"`."""
+    model_id: NotRequired[Literal["grok-imagine-image", "grok-imagine-image-2.0"]]
+    """The model variant to generate with. Default: `"grok-imagine-image-2.0"`."""
     aspect_ratio: NotRequired[Literal["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20"]]
     """Aspect ratio as `W:H`. Default: `"1:1"`."""
     resolution: NotRequired[Literal["1k", "2k"]]
@@ -951,8 +959,8 @@ class MinimaxH3Config(TypedDict):
     """The text prompt."""
     seed: NotRequired[int | None]
     """Integer seed for reproducible output; omit or send null for a random seed."""
-    model_id: NotRequired[Literal["minimax-h3-turbo", "minimax-h3"]]
-    """The model variant to generate with. Default: `"minimax-h3-turbo"`."""
+    model_id: NotRequired[Literal["minimax-h3-turbo", "pika-h3-flex", "minimax-h3"]]
+    """The model variant to generate with. Default: `"pika-h3-flex"`."""
     aspect_ratio: NotRequired[Literal["21:9", "16:9", "3:2", "5:4", "1:1", "4:5", "2:3", "9:16", "9:21"]]
     """Aspect ratio as `W:H`. Default: `"16:9"`."""
     resolution: NotRequired[Literal["480p", "544p", "720p", "768p"]]
@@ -1021,6 +1029,62 @@ class RaspberryConfig(TypedDict):
     """The reference image. An https URL or a data URL."""
     additional_images: NotRequired[list[str]]
     """Additional reference images. Each an https URL or a data URL."""
+    use_character_voices: NotRequired[bool]
+    """Default: `true`."""
+
+
+class SeedanceConfig(TypedDict):
+    """A partial config for Seedance. Sent to `POST /v1/seedance/generate`."""
+    prompt: str
+    """The text prompt."""
+    seed: NotRequired[int | None]
+    """Integer seed for reproducible output; omit or send null for a random seed."""
+    model_id: NotRequired[Literal["seedance-2.0-mini", "seedance-2.0-fast", "seedance-2.0", "seedance-2.5"]]
+    """The model variant to generate with. Default: `"seedance-2.5"`."""
+    aspect_ratio: NotRequired[Literal["16:9", "9:16", "1:1"]]
+    """Aspect ratio as `W:H`. Default: `"16:9"`."""
+    resolution: NotRequired[Literal["480p", "720p", "1080p", "4k"]]
+    """Output resolution token. Default: `"480p"`."""
+    duration: NotRequired[Literal["4", "5", "8", "10", "15", "20", "25", "30"]]
+    """Clip length in seconds, as a token. Default: `"4"`."""
+    image: NotRequired[str]
+    """The reference image. An https URL or a data URL."""
+    additional_images: NotRequired[list[str]]
+    """Additional reference images. Each an https URL or a data URL."""
+    videos: NotRequired[list[str]]
+    """The source videos. Each an https URL or a data URL."""
+    use_character_voices: NotRequired[bool]
+    """Default: `true`."""
+
+
+class Wan3Config(TypedDict):
+    """A partial config for Wan 3.0. Sent to `POST /v1/wan_3/generate`."""
+    prompt: str
+    """The text prompt."""
+    seed: NotRequired[int | None]
+    """Integer seed for reproducible output; omit or send null for a random seed."""
+    model_id: NotRequired[Literal["wan-3.0"]]
+    """The model variant to generate with. Default: `"wan-3.0"`."""
+    aspect_ratio: NotRequired[Literal["16:9", "4:3", "1:1", "3:4", "9:16"]]
+    """Aspect ratio as `W:H`. Default: `"16:9"`."""
+    resolution: NotRequired[Literal["480p", "720p", "1080p"]]
+    """Output resolution token. Default: `"480p"`."""
+    duration: NotRequired[Literal["2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]]
+    """Clip length in seconds, as a token. Default: `"3"`."""
+    first_image: NotRequired[str]
+    """The first frame image. An https URL or a data URL."""
+    last_image: NotRequired[str]
+    """The last frame image. An https URL or a data URL."""
+    image: NotRequired[str]
+    """The reference image. An https URL or a data URL."""
+    additional_images: NotRequired[list[str]]
+    """Additional reference images. Each an https URL or a data URL."""
+    videos: NotRequired[list[str]]
+    """The source videos. Each an https URL or a data URL."""
+    audio: NotRequired[bool]
+    """Default: `true`."""
+    prompt_extend: NotRequired[bool]
+    """Default: `false`."""
     use_character_voices: NotRequired[bool]
     """Default: `true`."""
 
@@ -1327,7 +1391,7 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                 },
                 "model_id": {
                     "type": "string",
-                    "enum": ["gpt-image-2", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst"],
+                    "enum": ["gpt-image-2", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "gpt-image-2.6-flare", "gpt-image-2.6-sunburst"],
                     "description": "The model variant to generate with.",
                     "default": "gpt-image-2",
                 },
@@ -1342,6 +1406,12 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                     "enum": ["1K", "2K"],
                     "description": "Output resolution token.",
                     "default": "1K",
+                },
+                "output_format": {
+                    "type": "string",
+                    "enum": ["jpeg", "gif"],
+                    "description": "The file to make: `jpeg` for a still, or `gif` for an animation on a GPT Image 2.6 model.",
+                    "default": "jpeg",
                 },
                 "image": {
                     "anyOf": [
@@ -1376,6 +1446,14 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                     "type": "string",
                     "default": "low",
                 },
+                "frame_count": {
+                    "type": "number",
+                    "default": 9,
+                },
+                "frame_duration_ms": {
+                    "type": "number",
+                    "default": 200,
+                },
             },
             "required": ["prompt"],
             "additionalProperties": True,
@@ -1405,9 +1483,9 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                 },
                 "model_id": {
                     "type": "string",
-                    "enum": ["grok-imagine-image", "grok-imagine-image-quality", "grok-imagine-image-2.0"],
+                    "enum": ["grok-imagine-image", "grok-imagine-image-2.0"],
                     "description": "The model variant to generate with.",
-                    "default": "grok-imagine-image-quality",
+                    "default": "grok-imagine-image-2.0",
                 },
                 "aspect_ratio": {
                     "type": "string",
@@ -3119,9 +3197,9 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                 },
                 "model_id": {
                     "type": "string",
-                    "enum": ["minimax-h3-turbo", "minimax-h3"],
+                    "enum": ["minimax-h3-turbo", "pika-h3-flex", "minimax-h3"],
                     "description": "The model variant to generate with.",
-                    "default": "minimax-h3-turbo",
+                    "default": "pika-h3-flex",
                 },
                 "aspect_ratio": {
                     "type": "string",
@@ -3434,6 +3512,240 @@ ARCHITECTURES: dict[str, ArchitectureInfo] = {
                         ],
                     },
                     "description": "Additional reference images. Each an https URL or a data URL.",
+                },
+                "use_character_voices": {
+                    "type": "boolean",
+                    "default": True,
+                },
+            },
+            "required": ["prompt"],
+            "additionalProperties": True,
+        },
+    },
+    "seedance": {
+        "name": "Seedance",
+        "type": "video",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text prompt.",
+                },
+                "seed": {
+                    "anyOf": [
+                        {
+                            "type": "integer",
+                        },
+                        {
+                            "type": "null",
+                        },
+                    ],
+                    "description": "Integer seed for reproducible output; omit or send null for a random seed.",
+                },
+                "model_id": {
+                    "type": "string",
+                    "enum": ["seedance-2.0-mini", "seedance-2.0-fast", "seedance-2.0", "seedance-2.5"],
+                    "description": "The model variant to generate with.",
+                    "default": "seedance-2.5",
+                },
+                "aspect_ratio": {
+                    "type": "string",
+                    "enum": ["16:9", "9:16", "1:1"],
+                    "description": "Aspect ratio as `W:H`.",
+                    "default": "16:9",
+                },
+                "resolution": {
+                    "type": "string",
+                    "enum": ["480p", "720p", "1080p", "4k"],
+                    "description": "Output resolution token.",
+                    "default": "480p",
+                },
+                "duration": {
+                    "type": "string",
+                    "enum": ["4", "5", "8", "10", "15", "20", "25", "30"],
+                    "description": "Clip length in seconds, as a token.",
+                    "default": "4",
+                },
+                "image": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "uri",
+                        },
+                        {
+                            "type": "string",
+                            "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                        },
+                    ],
+                    "description": "The reference image. An https URL or a data URL.",
+                },
+                "additional_images": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                            },
+                            {
+                                "type": "string",
+                                "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                            },
+                        ],
+                    },
+                    "description": "Additional reference images. Each an https URL or a data URL.",
+                },
+                "videos": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                            },
+                            {
+                                "type": "string",
+                                "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                            },
+                        ],
+                    },
+                    "description": "The source videos. Each an https URL or a data URL.",
+                },
+                "use_character_voices": {
+                    "type": "boolean",
+                    "default": True,
+                },
+            },
+            "required": ["prompt"],
+            "additionalProperties": True,
+        },
+    },
+    "wan_3": {
+        "name": "Wan 3.0",
+        "type": "video",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The text prompt.",
+                },
+                "seed": {
+                    "anyOf": [
+                        {
+                            "type": "integer",
+                        },
+                        {
+                            "type": "null",
+                        },
+                    ],
+                    "description": "Integer seed for reproducible output; omit or send null for a random seed.",
+                },
+                "model_id": {
+                    "type": "string",
+                    "enum": ["wan-3.0"],
+                    "description": "The model variant to generate with.",
+                    "default": "wan-3.0",
+                },
+                "aspect_ratio": {
+                    "type": "string",
+                    "enum": ["16:9", "4:3", "1:1", "3:4", "9:16"],
+                    "description": "Aspect ratio as `W:H`.",
+                    "default": "16:9",
+                },
+                "resolution": {
+                    "type": "string",
+                    "enum": ["480p", "720p", "1080p"],
+                    "description": "Output resolution token.",
+                    "default": "480p",
+                },
+                "duration": {
+                    "type": "string",
+                    "enum": ["2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"],
+                    "description": "Clip length in seconds, as a token.",
+                    "default": "3",
+                },
+                "first_image": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "uri",
+                        },
+                        {
+                            "type": "string",
+                            "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                        },
+                    ],
+                    "description": "The first frame image. An https URL or a data URL.",
+                },
+                "last_image": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "uri",
+                        },
+                        {
+                            "type": "string",
+                            "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                        },
+                    ],
+                    "description": "The last frame image. An https URL or a data URL.",
+                },
+                "image": {
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "format": "uri",
+                        },
+                        {
+                            "type": "string",
+                            "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                        },
+                    ],
+                    "description": "The reference image. An https URL or a data URL.",
+                },
+                "additional_images": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                            },
+                            {
+                                "type": "string",
+                                "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                            },
+                        ],
+                    },
+                    "description": "Additional reference images. Each an https URL or a data URL.",
+                },
+                "videos": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                            },
+                            {
+                                "type": "string",
+                                "pattern": "^data:[^;,]+(?:;[^;,]+)*;base64,",
+                            },
+                        ],
+                    },
+                    "description": "The source videos. Each an https URL or a data URL.",
+                },
+                "audio": {
+                    "type": "boolean",
+                    "default": True,
+                },
+                "prompt_extend": {
+                    "type": "boolean",
+                    "default": False,
                 },
                 "use_character_voices": {
                     "type": "boolean",
